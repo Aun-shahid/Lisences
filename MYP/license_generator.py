@@ -28,6 +28,13 @@ def generate_license_key(mac_address, customer_name):
     return hashlib.sha256(combined.encode()).hexdigest()[:16]
 
 
+def ensure_directory_exists(file_path):
+    """Ensure the directory for the given file path exists."""
+    directory = os.path.dirname(file_path)
+    if directory:  # If there's a directory path (not just a filename)
+        os.makedirs(directory, exist_ok=True)
+
+
 def main():
     print("\n===== Restaurant Manager License Generator =====\n")
     
@@ -81,6 +88,16 @@ def main():
     output_path_input = input(f"Output file path [default: {default_output}]: ").strip()
     output_path = output_path_input if output_path_input else default_output
     
+    # Normalize the output path to handle slashes
+    output_path = os.path.normpath(output_path)
+    
+    # Ensure the directory exists
+    try:
+        ensure_directory_exists(output_path)
+    except Exception as e:
+        print(f"Error creating directory for {output_path}: {e}")
+        return
+    
     # Load existing licenses or create new file
     try:
         if os.path.exists(output_path):
@@ -103,22 +120,16 @@ def main():
     except Exception as e:
         print(f"Error saving license file: {e}")
         # Fallback to current directory
-        fallback_path = "licenses.json"
+        fallback_path = os.path.join(os.getcwd(), "licenses.json")
         with open(fallback_path, "w") as f:
             json.dump(licenses, f, indent=2)
         print(f"License saved to fallback location: {fallback_path}")
+        output_path = fallback_path
     
-    # Print license information
-    print("\n===== License Information =====")
-    print(f"License Key: {license_key}")
-    print(f"MAC Address: {mac_address}")
-    print(f"Customer: {customer_name}")
-    print(f"Expiry Date: {expiry_date}")
-    print(f"Output File: {output_path}")
-    print("\nIMPORTANT: Upload this file to your GitHub repository for license verification.")
-
-    # Generate individual license file for customer
-    customer_license_path = f"{customer_name.replace(' ', '_')}_license.txt"
+    # Generate individual license file for customer in the same directory as output_path
+    customer_filename = f"{customer_name.replace(' ', '_')}_license.txt"
+    customer_license_path = os.path.join(os.path.dirname(output_path), customer_filename)
+    
     try:
         with open(customer_license_path, "w") as f:
             f.write(f"LICENSE KEY: {license_key}\n")
@@ -129,6 +140,23 @@ def main():
         print(f"\nCustomer license file saved to: {customer_license_path}")
     except Exception as e:
         print(f"Warning: Could not create customer license file: {e}")
+        # Fallback to current directory
+        customer_fallback_path = os.path.join(os.getcwd(), customer_filename)
+        with open(customer_fallback_path, "w") as f:
+            f.write(f"LICENSE KEY: {license_key}\n")
+            f.write(f"Customer: {customer_name}\n")
+            f.write(f"Expiry Date: {expiry_date}\n")
+            f.write(f"Issue Date: {datetime.datetime.now().strftime('%Y-%m-%d')}\n")
+        print(f"Customer license file saved to fallback location: {customer_fallback_path}")
+    
+    # Print license information
+    print("\n===== License Information =====")
+    print(f"License Key: {license_key}")
+    print(f"MAC Address: {mac_address}")
+    print(f"Customer: {customer_name}")
+    print(f"Expiry Date: {expiry_date}")
+    print(f"Output File: {output_path}")
+    print("\nIMPORTANT: Upload this file to your GitHub repository for license verification.")
 
 
 if __name__ == "__main__":
