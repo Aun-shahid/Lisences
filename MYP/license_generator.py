@@ -1,72 +1,142 @@
-# license_generator.py
+#!/usr/bin/env python3
+"""
+License Generator for Restaurant Manager
+----------------------------------------
+This tool generates a license key based on MAC address and customer information.
+The license is stored in a JSON file that can be uploaded to GitHub for verification.
+"""
+
 import json
-import argparse
-import hashlib
 import datetime
+import hashlib
 import secrets
-import requests
+import uuid
+import os
+import getpass
+from pathlib import Path
 
-# Constants
-LICENSE_REPO_FILE = "licenses.json"
-LICENSE_REPO_URL = "https://raw.githubusercontent.com/your-org/licenses/main/licenses.json"
 
-def generate_license_key(machine_id, customer_name):
-    """Generate a unique license key."""
-    # Generate a random component
-    random_component = secrets.token_hex(4)
-    return hashlib.md5(f"{machine_id}-{customer_name}-{random_component}".encode()).hexdigest()[:12]
+def get_mac_address():
+    """Get the MAC address of the current machine."""
+    mac = uuid.getnode()
+    return ':'.join(['{:02x}'.format((mac >> elements) & 0xff) for elements in range(0, 8*6, 8)][::-1])
+
+
+def generate_license_key(mac_address, customer_name):
+    """Generate a deterministic license key based on MAC address and customer name."""
+    combined = f"{mac_address}:{customer_name}"
+    return hashlib.sha256(combined.encode()).hexdigest()[:16]
+
 
 def main():
-    parser = argparse.ArgumentParser(description="License Generator for Restaurant Manager")
-    parser.add_argument("machine_id", help="Machine ID of the target computer")
-    parser.add_argument("customer_name", help="Name of the customer")
-    parser.add_argument("--expiry", help="Expiry date in YYYY-MM-DD format", default=None)
-    parser.add_argument("--features", help="Comma-separated list of features", default="basic")
+    print("\n===== Restaurant Manager License Generator =====\n")
     
-    args = parser.parse_args()
+    # Determine if we're generating for the current machine or another
+    current_machine = input("Generate license for current machine? (y/n): ").lower().strip() == 'y'
     
-    # Set expiry date (default to 1 year from now)
-    if args.expiry:
-        expiry_date = f"{args.expiry}T23:59:59"
+    if current_machine:
+        mac_address = get_mac_address()
+        print(f"Detected MAC Address: {mac_address}")
     else:
-        expiry_date = (datetime.datetime.now() + datetime.timedelta(days=365)).isoformat()
+        mac_address = input("Enter MAC Address (format xx:xx:xx:xx:xx:xx): ").strip()
+        # Basic validation
+        if len(mac_address.split(':')) != 6:
+            print("Error: Invalid MAC address format. Please use format xx:xx:xx:xx:xx:xx")
+            return
+    
+    # Get customer information
+    customer_name = input("Enter Customer Name: ").strip()
+    while not customer_name:
+        print("Customer name cannot be empty.")
+        customer_name = input("Enter Customer Name: ").strip()
+    
+    # Get expiry information
+    default_expiry = (datetime.datetime.now() + datetime.timedelta(days=365)).strftime("%Y-%m-%d")
+    expiry_input = input(f"Enter Expiry Date (YYYY-MM-DD) [default: {default_expiry}]: ").strip()
+    expiry_date = expiry_input if expiry_input else default_expiry
+    
+    try:
+        # Validate date format
+        datetime.datetime.strptime(expiry_date, "%Y-%m-%d")
+        expiry_datetime = f"{expiry_date}T23:59:59"
+    except ValueError:
+        print("Error: Invalid date format. Please use YYYY-MM-DD format.")
+        return
     
     # Generate license key
-    license_key = generate_license_key(args.machine_id, args.customer_name)
+    license_key = generate_license_key(mac_address, customer_name)
     
     # Create license data
     license_data = {
-        "machine_id": args.machine_id,
-        "customer_name": args.customer_name,
-        "expiry_date": expiry_date,
+        "mac_address": mac_address,
+        "machine_id": hashlib.md5(mac_address.encode()).hexdigest(),
+        "customer_name": customer_name,
+        "expiry_date": expiry_datetime,
         "license_key": license_key,
-        "features": args.features.split(","),
         "issue_date": datetime.datetime.now().isoformat()
     }
     
-    # Try to load existing licenses
+    # Determine output location
+    default_output = os.path.join(os.getcwd(), "licenses.json")
+    output_path_input = input(f"Output file path [default: {default_output}]: ").strip()
+    output_path = output_path_input if output_path_input else default_output
+    
+    # Load existing licenses or create new file
     try:
-        response = requests.get(LICENSE_REPO_URL)
-        if response.status_code == 200:
-            licenses = response.json()
+        if os.path.exists(output_path):
+            with open(output_path, "r") as f:
+                licenses = json.load(f)
         else:
             licenses = {}
-    except:
+    except Exception as e:
+        print(f"Warning: Could not load existing licenses: {e}")
         licenses = {}
     
     # Add new license
     licenses[license_key] = license_data
     
     # Save to file
-    with open(LICENSE_REPO_FILE, "w") as f:
-        json.dump(licenses, f, indent=2)
+    try:
+        with open(output_path, "w") as f:
+            json.dump(licenses, f, indent=2)
+        print("\nLicense generated successfully!")
+    except Exception as e:
+        print(f"Error saving license file: {e}")
+        # Fallback to current directory
+        fallback_path = "licenses.json"
+        with open(fallback_path, "w") as f:
+            json.dump(licenses, f, indent=2)
+        print(f"License saved to fallback location: {fallback_path}")
     
-    print(f"License generated for {args.customer_name}")
+    # Print license information
+    print("\n===== License Information =====")
     print(f"License Key: {license_key}")
+    print(f"MAC Address: {mac_address}")
+    print(f"Customer: {customer_name}")
     print(f"Expiry Date: {expiry_date}")
-    print(f"Machine ID: {args.machine_id}")
-    print(f"Saved to {LICENSE_REPO_FILE}")
-    print("\nIMPORTANT: Upload this file to your GitHub repository.")
+    print(f"Output File: {output_path}")
+    print("\nIMPORTANT: Upload this file to your GitHub repository for license verification.")
+
+    # Generate individual license file for customer
+    customer_license_path = f"{customer_name.replace(' ', '_')}_license.txt"
+    try:
+        with open(customer_license_path, "w") as f:
+            f.write(f"LICENSE KEY: {license_key}\n")
+            f.write(f"Customer: {customer_name}\n")
+            f.write(f"Expiry Date: {expiry_date}\n")
+            f.write(f"Issue Date: {datetime.datetime.now().strftime('%Y-%m-%d')}\n")
+        
+        print(f"\nCustomer license file saved to: {customer_license_path}")
+    except Exception as e:
+        print(f"Warning: Could not create customer license file: {e}")
+
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nLicense generation cancelled.")
+    except Exception as e:
+        print(f"\nError: {e}")
+    
+    input("\nPress Enter to exit...")
