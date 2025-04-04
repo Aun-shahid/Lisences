@@ -1,10 +1,5 @@
 {
-  "a399ad812afa6c87": {
-    "mac_address": "08:8f:c3:11:36:1f",
-    "machine_id": "46bf729f5d1dae5737b10285f062da05",
-    "customer_name": "Madina Yakhni Pulao",
-    "expiry_date": "2026-04-03T23:59:59",
-    "license_key": "a399ad812afa6c87",
-    "issue_date": "2025-04-03T06:56:57.217351"
-  }
+  "encrypted_licenses": "gAAAAABn70dLUv6MG--Wlmw1LCuQ58DYM0diz88trHk8xibeVgGaEx4O58-_rw8nhOpCZYmnd7a3eIBVNAGuMTwa74fAZbc05up_W-7HPix2Y-msp1Y0df3OrTOkpXziwxzX68nD5UZ_TM2QJ-jwvGq989_8p54HRfUbbAaC2QQ6R6_UkfHdlcqL4EsDHjdgPVNXNWAOBbcBO6AN4udyPIgpDazDLgW2Pm6KB5_xap0qDVzHCfxF6JXiIbEp0vNXXydIE9NTCvz-PkMhlGuA6L56q8pA-zLmuZwUjPryVgjtdWrU_LelGlcijG_dUwT-hkBKsauyp0NS2mH-0QHm0DIZKcaeZ39eVaU0NGwJcy2p28pSegGJuPoF4WOnhNnlEj60bI_kUnAJXLU2iRF_M82XUjUuK_Ir1GkFhTrUF8jauPwv0vFFYEE=",
+  "format_version": "1.0",
+  "updated_at": "2025-04-04T07:43:23.046846"
 }
