@@ -1,4 +1,0 @@
-LICENSE KEY: 46eca7ee5b642c5b
-Customer: MYP
-Expiry Date: 2026-04-03
-Issue Date: 2025-04-03
